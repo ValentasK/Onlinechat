@@ -1,0 +1,240 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+
+<div id="nickNameform2" class="text-center">
+    <h1 id="welcome" class="display-4">Welcome</h1>
+    <p id="alertNickName" style="color:red"></p>
+</div>
+
+<div id="nickNameform" class="register_form">
+    <div class="input-group">
+        <textarea id="Nickname" name="" class="form-control type_msg" placeholder="Your name..."></textarea>
+        <div class="input-group-append">
+            <button class="input-group-text send_btn btn" id="nickNameBtn" onclick="getNickName()"> Join</button>
+        </div>
+    </div>
+</div>
+
+
+@*//some source code used from https://bootsnipp.com/snippets/nNg98*@
+<div id="chatRomm" style="display:none" class="container-fluid h-100">
+        <div class="row justify-content-center h-100">
+            <div class="col-md-8 col-xl-12 chat h-100">
+                <div class="card h-100">
+                    <div id="listOfMessages" class="card-body msg_card_body h-100">
+                        
+                    </div>
+                    <div class="card-footer">
+                        <div class="input-group">
+                            <textarea id="messageContentToSend" name="" class="form-control type_msg" placeholder="Type your message..."></textarea>
+                            <div class="input-group-append">
+                                <button class="input-group-text send_btn btn" id="messageBtn" onclick="sendMessage()"> Send</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+
+    <script>
+
+        var userId = 0;
+        var nickName = "";
+        var alertnickName = document.querySelector("#alertNickName");
+        var WelcomeText = document.querySelector("#welcome");
+
+        function getNickName() {
+            // get nick name value
+            //var nickName = document.getElementById("Nickname").value;
+            nickName = document.querySelector("#Nickname").value;
+
+            //var alertnickName = document.querySelector("#alertNickName");
+
+            if (nickName == "") {
+                alertnickName.innerHTML = "Nick Name Required";
+            }
+            else {
+                var requestOptions = {
+                    method: 'PUT',
+                    redirect: 'follow'
+                };
+
+                fetch("/api/chatroomapi/" + nickName, requestOptions)
+                    .then(response => response.text())
+                    .then(result => setNewUser(result))
+                    .catch(error => console.log('error', error));
+            }
+        }
+
+        function setNewUser(idd) {
+
+            if (idd == 0) {
+                alertnickName.innerHTML = "Nick Name Exists";
+            }
+            else {
+                userId = idd;   //////////////////////////////////////////////////////
+                //userId = 89;
+                WelcomeText.innerHTML = "Welcome " + nickName;
+                alertnickName.innerHTML = "";
+                document.getElementById("nickNameform").style.display = "none";
+                document.getElementById("nickNameform2").style.display = "none";
+                document.getElementById("chatRomm").style.display = "block";
+                startChatRoom();
+            }
+        }
+
+        // papai 
+
+
+        function startChatRoom() {
+            var myVar = setInterval(updateChat, 2000);
+        }
+
+        function updateChat() {
+            var request = {
+                method: 'GET'
+            };
+
+            fetch("/api/chatroomapi/" + userId, request)
+                .then(response => response.json())
+                .then(data => {
+                    updateMessages(data);
+                });
+        }
+
+
+        function updateMessages(mesages) {
+
+            // clear previous messages
+            document.querySelector('#listOfMessages').innerHTML = "";
+
+            mesages.forEach(element => {
+                console.log(element.id);
+                console.log(mesages);
+                addToDom(element);
+                // change time to long ...
+            });
+        }
+
+        function addToDom(element) {
+
+            var messageContainer = document.createElement("div"); // create message container
+            var messageContent = document.createElement("div"); // create div to hold message content
+            var userNameAndTime = document.createElement("div"); // create span to hold user name and time
+
+            var messageTime = element.created.substring(11, 19); // cut to time only of message created
+            var userName;
+
+            messageContent.innerText = element.messageText; // set text value
+
+            if (userId == element.userId) {  // display users messages on right side
+                messageContainer.className = "d-flex justify-content-end mb-0"; // apply bootstrap
+                messageContent.className = "msg_cotainer_send"; // change colour
+                userNameAndTime.className = "d-flex justify-content-end mb-2"; // change colour
+                userName = nickName;
+            }
+            else {   // display other messages on left side
+                messageContainer.className = "d-flex justify-content-start mb-0"; // apply bootstrap
+                messageContent.className = "msg_cotainer"; // change colour
+                userNameAndTime.className = "d-flex justify-content-start mb-2"; // change colour
+                userName = element.userName;
+            }
+
+            userNameAndTime.innerText = userName + ", " + messageTime; // set values
+
+            messageContainer.appendChild(messageContent); // insert "messageContent" into "messageContainer"
+            //  messageContainer.appendChild(userName); // insert "userName" into "messageContainer"
+
+
+
+            var messagesToDisplay = document.querySelector("#listOfMessages"); // get div where message will be sent
+            messagesToDisplay.appendChild(messageContainer); // insert "messageContainer" into "messagesToDisplay"
+            messagesToDisplay.appendChild(userNameAndTime); // insert "messageContainer" into "messagesToDisplay"
+
+
+        }
+
+
+        function sendMessage() {
+
+            var messageToSend = document.getElementById("messageContentToSend").value;
+
+            if (messageToSend == "") {
+                return;  // finishes the function
+            }
+
+            
+            var myHeaders = new Headers();
+            myHeaders.append("Content-Type", "application/json");
+
+            var raw = JSON.stringify({ "userid": parseInt(userId), "message": messageToSend});
+
+            var requestOptions = {
+                method: 'POST',
+                headers: myHeaders,
+                body: raw,
+                redirect: 'follow'
+            };
+
+
+
+            fetch("/api/chatroomapi/", requestOptions)
+                .then(response => response.text())
+                .then(result => console.log(result))
+                .catch(error => console.log('error', error));
+
+            document.getElementById("messageContentToSend").value = ""; // clear message field
+
+            //
+            updateChat();
+
+        }
+
+    </script>
+}
+
+
+
+
+
+@*fetch("/api/chatroomapi/1", request)
+    .then(response => response.json())
+    .then(data => {
+    data.forEach(element => {
+    console.log(element.id);
+    console.log(element.messageText);
+    });
+    });*@
+
+
+@*function sendMessage() {
+
+        var messageToSend = document.getElementById("messageContentToSend").value;
+
+        if (messageToSend == "") {
+            return;  // finishes the function
+        }
+
+        var requestOptions = {
+            method: 'PUT',
+            redirect: 'follow'
+        };
+
+        fetch("/api/chatroomapi?userid=" + userId + "&message=" + messageToSend, requestOptions)
+            .then(response => response.text())
+            .then(result => console.log(result))
+            .catch(error => console.log('error', error));
+
+        document.getElementById("messageContentToSend").value = ""; // clear message field
+
+        updateChat();
+
+    }*@
